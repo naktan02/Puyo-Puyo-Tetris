@@ -28,25 +28,44 @@ class GameUI:
         self.scores = {'p1': 0, 'p2': 0}
         self.game_over_msg: Optional[str] = None
         self.dirty = True
+        self.my_next = None  # 내 다음 블록
+        self.op_next = None  # 상대 다음 블록
 
     def handle_game_state(self, payload: list[str]):
-        try:
-            self.scores['p1'] = int(payload[0])
-            self.scores['p2'] = int(payload[2])
-            # p1, p2 보드 파싱
-            p1_board = self._parse_board(payload[1])
-            p2_board = self._parse_board(payload[3])
-            
-            if self.my_role == 'P1':
-                self.my_board = p1_board
-                self.op_board = p2_board
-            else:
-                self.my_board = p2_board
-                self.op_board = p1_board
+            try:
+                # 패킷 인덱스가 하나씩 밀립니다 (next가 추가되어서)
+                # [0] game_id (이미 알고 있음)
                 
-            self.dirty = True
-        except (IndexError, ValueError):
-            pass
+                # --- P1 ---
+                # [1] p1_id
+                self.scores['p1'] = int(payload[2])
+                # [3] lines
+                # [4] game_over
+                p1_board = self._parse_board(payload[5])
+                p1_next = payload[6] # <--- Next Block
+                
+                # --- P2 ---
+                # [7] p2_id
+                self.scores['p2'] = int(payload[8])
+                # [9] lines
+                # [10] game_over
+                p2_board = self._parse_board(payload[11])
+                p2_next = payload[12] # <--- Next Block
+                
+                if self.my_role == 'P1':
+                    self.my_board = p1_board
+                    self.op_board = p2_board
+                    self.my_next = p1_next
+                    self.op_next = p2_next
+                else:
+                    self.my_board = p2_board
+                    self.op_board = p1_board
+                    self.my_next = p2_next
+                    self.op_next = p1_next
+                    
+                self.dirty = True
+            except (IndexError, ValueError):
+                pass # 패킷 에러 무시
 
     def handle_game_over(self, payload: list[str]):
         result = payload[0] if payload else "Unknown"
@@ -93,6 +112,8 @@ class GameUI:
                     self.scores,
                     self.my_board,
                     self.op_board,
+                    self.my_next,   # 추가
+                    self.op_next,
                     self.game_over_msg
                 )
                 self.dirty = False

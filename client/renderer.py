@@ -2,6 +2,16 @@ import os
 import sys
 
 # --- 화면 제어 함수 ---
+BLOCK_SHAPES = {
+    "I": ["    ", "####", "    ", "    "],
+    "O": [" ## ", " ## ", "    ", "    "],
+    "T": [" #  ", "### ", "    ", "    "],
+    "S": [" ## ", "##  ", "    ", "    "],
+    "Z": ["##  ", " ## ", "    ", "    "],
+    "J": ["#   ", "### ", "    ", "    "],
+    "L": ["  # ", "### ", "    ", "    "],
+    "":  ["    ", "    ", "    ", "    "] # 공백
+}
 
 def clear_screen():
     """커서를 상단으로 이동 (깜빡임 최소화)"""
@@ -52,34 +62,56 @@ def draw_game(
     scores: dict,
     my_board: list,
     op_board: list,
+    my_next: str,   # 추가됨
+    op_next: str,   # 추가됨
     game_over_msg: str | None = None,
 ):
-    """
-    game_ui.py에서 이미 가공된 데이터를 받아 출력만 담당
-    """
     my_score = scores.get(my_role, 0)
-    # 상대방 역할 구하기
-    op_role = 'p1' if my_role == 'p2' else 'p2'
+    op_role = 'P2' if my_role == 'P1' else 'P1'
     op_score = scores.get(op_role, 0)
 
     buffer = []
     
-    # 상단 점수판
-    title = f"ME({my_role}) [{my_score}]  VS  [{op_score}] OPP({opponent_name})"
-    buffer.append("=" * 60)
-    buffer.append(f"{title:^60}")
-    buffer.append("-" * 60)
-
-    # 보드 출력
-    # my_board, op_board는 이미 [['.', '■', ...], ...] 형태임
-    for r in range(20):
-        row_my = " ".join(my_board[r])
-        row_op = " ".join(op_board[r])
-        buffer.append(f"| {row_my} |   | {row_op} |")
+    # 1. 상단 헤더
+    buffer.append("=" * 70)
+    title = f"ME({my_role}) {my_score} VS {op_score} OPP({opponent_name})"
+    buffer.append(f"{title:^70}")
+    buffer.append("-" * 70)
     
-    buffer.append("=" * 60)
+    # 2. 보드 + NEXT 블록 그리기
+    # 구조: | 내보드 |  NEXT  | 상대보드 |
+    
+    # Next 블록 모양 가져오기
+    my_next_shape = BLOCK_SHAPES.get(my_next, BLOCK_SHAPES[""])
+    op_next_shape = BLOCK_SHAPES.get(op_next, BLOCK_SHAPES[""])
+    
+    for r in range(20):
+        # 내 보드 한 줄
+        row_my = "".join(my_board[r])
+        # 상대 보드 한 줄
+        row_op = "".join(op_board[r])
+        
+        # 중앙 정보창 (NEXT 블록 표시)
+        center_txt = "      "
+        if r == 1:
+            center_txt = " NEXT "
+        elif 2 <= r <= 5:
+            # 내 NEXT 블록 그리기
+            center_txt = f" {my_next_shape[r-2]} " 
+        
+        # 문자열 합치기
+        line = f"|{row_my}|{center_txt}|{row_op}|"
+        
+        # 상대방 NEXT도 보여주고 싶다면? (선택사항)
+        if r == 1:
+            line += " OP-NEXT"
+        elif 2 <= r <= 5:
+            line += f"  {op_next_shape[r-2]}"
+            
+        buffer.append(line)
+    
+    buffer.append("=" * 70)
 
-    # 하단 메시지
     if game_over_msg:
         buffer.append(f"\n>>> {game_over_msg} <<<")
     else:

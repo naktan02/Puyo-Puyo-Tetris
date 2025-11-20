@@ -127,24 +127,40 @@ class GameSession:
         return "/".join(rows)
 
     def _broadcast_state(self, s1, s2):
-        b1 = self._encode_board(s1.board)
-        b2 = self._encode_board(s2.board)
-        packet = encode_line(
-            OpCode.GAME_STATE,
-            str(self.id),
-            str(self.p1.player_id),
-            str(s1.score),
-            str(s1.lines_cleared),
-            "1" if s1.game_over else "0",
-            b1,
-            str(self.p2.player_id),
-            str(s2.score),
-            str(s2.lines_cleared),
-            "1" if s2.game_over else "0",
-            b2,
-        )
-        self.p1.send_packet(packet)
-        self.p2.send_packet(packet)
+            # 보드 인코딩
+            b1 = self._encode_board(s1.board)
+            b2 = self._encode_board(s2.board)
+            
+            # s1, s2는 GameState 객체입니다. engine/tetris.py를 수정하여 next_piece 정보를 GameState에 담아야 합니다.
+            # 하지만 간단하게 하기 위해 여기서 TetrisGame 인스턴스(self.game_p1, self.game_p2)의 next_kind를 직접 참조하겠습니다.
+            
+            # P1의 다음 블록
+            n1 = self.game_p1.next_kind if self.game_p1.next_kind else ""
+            # P2의 다음 블록
+            n2 = self.game_p2.next_kind if self.game_p2.next_kind else ""
+
+            # 패킷 구조 변경: 기존 뒤에 |next_block 추가
+            # GAME_STATE|gid|p1_id|sc1|lines1|over1|board1|next1|p2_id|sc2|lines2|over2|board2|next2
+            packet = encode_line(
+                OpCode.GAME_STATE,
+                str(self.id),
+                # --- Player 1 데이터 ---
+                str(self.p1.player_id),
+                str(s1.score),
+                str(s1.lines_cleared),
+                "1" if s1.game_over else "0",
+                b1,
+                n1, # <--- P1 Next Block 추가
+                # --- Player 2 데이터 ---
+                str(self.p2.player_id),
+                str(s2.score),
+                str(s2.lines_cleared),
+                "1" if s2.game_over else "0",
+                b2,
+                n2  # <--- P2 Next Block 추가
+            )
+            self.p1.send_packet(packet)
+            self.p2.send_packet(packet)
 
     def _finish_game_locked(self, s1, s2):
         if self.finished:
