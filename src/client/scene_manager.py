@@ -291,7 +291,7 @@ class SceneManager:
                         self.state = "ROOM"
 
                         self.room_ready = [False] * MAX_ROOM_SLOTS
-                        self.network.send_packet(Packet(CMD_REQ_SEARCH_ROOM, b'')) 
+                        self.network.send_packet(Packet(CMD_REQ_ROOM_INFO, b'')) 
                         return
                 else:
                     # 게임 중 Quit -> 강제 종료 (로비로)

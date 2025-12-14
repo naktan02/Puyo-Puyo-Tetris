@@ -136,3 +136,19 @@ def handle_search_room(client, packet):
     # 목록 전송 (CMD_REQ_SEARCH_ROOM에 대한 응답용 별도 CMD가 없으므로 동일 CMD 사용하거나 0x10 사용)
     # PPT 명세상 Server->Client의 0x10은 없으나, 목록 응답용으로 0x10을 재사용한다고 가정
     client.send_packet(Packet(CMD_REQ_SEARCH_ROOM, payload))
+
+
+@router.route(CMD_REQ_ROOM_INFO)
+def handle_room_info(client, packet):
+    if not client.room_id: return
+    room = room_manager.get_room(client.room_id)
+    if not room: return
+    # 1. 유저 목록 전송
+    for user in room.get_users():
+        slot = room.slots.index(user)
+        body = struct.pack('>B', slot) + user.nickname.encode('utf-8')
+        client.send_packet(Packet(CMD_NOTI_ENTER_ROOM, body))
+        # 2. 레디 정보 전송 (레디한 경우만)
+        if room.ready_states[slot]:
+            r_body = struct.pack('>B B', slot, 1)
+            client.send_packet(Packet(CMD_NOTI_READY_STATE, r_body))
